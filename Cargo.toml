@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Mae is used to standardize and streamline the creation of micro-services."
 homepage = "https://mae.statbook.io"
-readme = "README.md"
+readme = "./README.md"
 repository = "https://github.com/MrCartaaa/mae"
 
 [dependencies]
