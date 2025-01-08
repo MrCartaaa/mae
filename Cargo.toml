@@ -1,0 +1,11 @@
+[package]
+name = "mae"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Mae is used to standardize and streamline the creation of micro-services."
+homepage = "mae.statbook.io"
+readme = "README.md"
+repository = "https://github.com/MrCartaaa/mae"
+
+[dependencies]
