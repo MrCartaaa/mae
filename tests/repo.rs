@@ -1,14 +1,15 @@
+use anyhow::anyhow;
 use mae::repo::prelude::*;
 
+#[derive(Repo)]
 #[repo]
-#[allow(dead_code)]
 pub struct RepoExample {
     pub value: u64,
 }
 
 #[test]
 fn should_make_domain_struct() {
-    let _domain = RepoExample {
+    let _my_repo = RepoExample {
         value: 1,
         comment: None,
         id: 1,
@@ -21,7 +22,18 @@ fn should_make_domain_struct() {
         updated_at: Utc::now(),
         created_at: Utc::now(),
     };
-    // TODO: derive_macro needs to be created, then Domain::new() and that should be used to
-    // return a result -> assert!(domain.is_ok());
     assert!(true);
+}
+
+#[test]
+fn should_create_record() {
+    let data = CreateRepoExample {
+        value: 1,
+        comment: None,
+        tags: None,
+        sys_detail: None,
+    };
+    let rec = RepoExample::create(data);
+
+    assert!(rec.is_ok());
 }
