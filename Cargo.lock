@@ -65,7 +65,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
-name = "domain"
+name = "domain_macro"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -128,10 +128,10 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "mae"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
- "domain",
+ "domain_macro",
  "serde_json",
 ]
 
