@@ -5,9 +5,58 @@ use syn::Data::Struct;
 use syn::Fields::Named;
 use syn::FieldsNamed;
 use syn::parse_macro_input;
-use syn::{Data, DataStruct, DeriveInput, Fields};
+use syn::{Data, DataStruct, DeriveInput, Field, Fields};
 
-#[proc_macro_derive(Repo)]
+enum Method {
+    Create,
+    Read,
+    Update,
+}
+
+fn has_attribute(field: &Field, attr_name: &str) -> bool {
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident(attr_name))
+}
+
+fn get_ident(
+    field: &Field,
+    method: Method,
+    i: usize,
+) -> (proc_macro2::TokenStream, String, String) {
+    let name = &field.ident;
+
+    let field_name = field
+        .ident
+        .clone()
+        .as_ref()
+        .map(|id| format!("{}", id.to_string()))
+        .unwrap();
+    match method {
+        Method::Create => {
+            if has_attribute(field, "id") {
+                return (quote! {}, String::from(""), String::from(""));
+            }
+            if has_attribute(field, "gen_date") {
+                return (quote! {}, String::from("now()"), field_name);
+            }
+            if has_attribute(field, "from_context") {
+                return (quote! {ctx.session.user.id}, format!("${}", i), field_name);
+            }
+            if has_attribute(field, "sys_client")
+                || has_attribute(field, "option")
+                || has_attribute(field, "status")
+            {
+                return (quote! {data.#name}, format!("${}", i), field_name);
+            }
+            return (quote! {data.#name}, format!("${}", i), field_name);
+        }
+        _ => todo!(),
+    }
+}
+
+#[proc_macro_derive(Repo, attributes(default, sys_client, option, from_context, gen_date))]
 pub fn derive_repo(item: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(item as DeriveInput);
 
@@ -20,21 +69,28 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
         }) => &fields.named,
         _ => panic!("expected a struct with named fields"),
     };
-    let idents = fields.iter().map(|f| {
-        let name = &f.ident;
-        quote! {#name}
+
+    let mut idents = vec![];
+    let mut sql_reprs = vec![];
+    let mut field_names = vec![];
+
+    fields.iter().enumerate().for_each(|(i, f)| {
+        let (ident, sql_repr, field_name) = get_ident(f, Method::Create, i);
+        if ident.is_empty() == false {
+            idents.push(ident);
+        }
+        if sql_repr.is_empty() == false {
+            sql_reprs.push(sql_repr);
+        }
+        if field_name.is_empty() == false {
+            field_names.push(field_name);
+        }
     });
-    let values_count: String = fields
-        .iter()
-        .enumerate()
-        .map(|(i, _)| format!("${}", i))
-        .collect();
-    let field_names: Vec<String> = fields
-        .into_iter()
-        .map(|f| f.ident.clone().as_ref().map(|id| id.to_string()).unwrap())
-        .collect();
-    let field_names_string: String = field_names.into_iter().collect();
+
+    let sql_reprs_str = sql_reprs.into_iter().collect::<Vec<_>>().join(",");
+    let field_names_string: String = field_names.into_iter().collect::<Vec<_>>().join(",");
     let struct_name = &ast.ident;
+    let struct_name_str = &ast.ident.to_string().to_lowercase();
 
     let create_fn_data_type = format_ident!("Create{}", ast.ident);
     let update_fn_data_type = format_ident!("Update{}", ast.ident);
@@ -46,20 +102,20 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
     quote! {
 
             impl #struct_name {
-                fn create(data: #create_fn_data_type) -> Result<(), anyhow::Error> {
+                async fn create(ctx: RequestContext<Database>, data: #create_fn_data_type) -> Result<(), anyhow::Error> {
+            let sql =
+                format!(
+             "INSERT INTO {} ({}) VALUES ({}) RETURNING *;",
+             #struct_name_str,
+             #field_names_string,
+             #sql_reprs_str);
+
+
+            let result: #struct_name = sqlx::query_as (
+                &sql)#(.bind(#idents))*
+            .fetch_one(ctx.db_pool).await?;
+
                 Ok(())
-            // let sql =
-            //     format!(
-            //  "INSERT INTO {table} ({field_names}) VALUES (values_count) RETURNING {field_names};",
-            //  table = #struct_name,
-            //  field_names = #field_names_string,
-            //  values_count = #values_count);
-            //
-            //
-            // let result = sqlx.query_as!(
-            //     #struct_name, sql, #(#idents),*
-            // ).fetch_one(ctx.db_pool).await?;
-            //
             // Ok(result)
             }
                 fn update(data: #update_fn_data_type) -> Result<(), anyhow::Error> {
@@ -91,23 +147,27 @@ pub fn repo(_: TokenStream, input: TokenStream) -> TokenStream {
     let params = fields.iter().map(|f| {
         let name = &f.ident;
         let ty = &f.ty;
-        quote! {#name: #ty}
+        quote! {pub #name: #ty}
     });
 
     // rebuild repo struct
     let repo = quote! {
+
+        #[derive(Repo, sqlx::FromRow)]
         pub struct #repo_ident {
-            pub id: u64,
-            pub sys_client: u64,
-            pub status: DomainStatus,
+            #[id] pub id: u64,
+            #[sys_client] pub sys_client: u64,
+            #[status] pub status: DomainStatus,
             #(#params,)*
-            pub comment: Option<String>,
-            pub tags: Vec<String>,
-            pub sys_detail: Map<String, Value>,
-            pub created_by: u64,
-            pub updated_by: u64,
-            pub created_at: DateTime<Utc>,
-            pub updated_at: DateTime<Utc>,
+            #[option] pub comment: Option<String>,
+            #[sqlx(json)]
+            #[option] pub tags: Vec<String>,
+            #[sqlx(json)]
+            #[option] pub sys_detail: Map<String, Value>,
+            #[from_context] pub created_by: u64,
+            #[from_context] pub updated_by: u64,
+            #[gen_date] pub created_at: DateTime<Utc>,
+            #[gen_date] pub updated_at: DateTime<Utc>,
         }
     };
 
@@ -123,6 +183,8 @@ pub fn repo(_: TokenStream, input: TokenStream) -> TokenStream {
     let create_repo = quote! {
         pub struct #create_repo_ident {
             #(#params,)*
+            pub sys_client: u64,
+            pub status: DomainStatus,
             pub comment: Option<String>,
             pub tags: Option<Vec<String>>,
             pub sys_detail: Option<Map<String, Value>>,
