@@ -1,12 +1,14 @@
-pub struct RequestContext<T> {
-    db_pool: T,
-    session: Session,
+use sqlx::PgPool;
+
+pub struct RequestContext {
+    pub db_pool: PgPool,
+    pub session: Session,
 }
 
 pub struct Session {
-    user: User,
+    pub user: User,
 }
 
 pub struct User {
-    id: i64,
+    pub id: i64,
 }
