@@ -1,6 +1,5 @@
 use crate::build::get_context;
 use mae::repo::prelude::*;
-use mae::request_context::RequestContext;
 
 #[repo]
 pub struct RepoExample {

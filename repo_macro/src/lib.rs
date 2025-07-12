@@ -131,7 +131,7 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
     quote! {
 
             impl #struct_name {
-                async fn insert(ctx: &RequestContext, data: #create_fn_data_type) -> Result<#struct_name, anyhow::Error> {
+                pub async fn insert(ctx: &RequestContext, data: #create_fn_data_type) -> Result<#struct_name, anyhow::Error> {
 
                     let sql = format!(
                     "INSERT INTO {} ({}) VALUES ({}) RETURNING {};",

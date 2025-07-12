@@ -1,4 +1,5 @@
 pub mod prelude {
+    pub use crate::request_context::RequestContext;
     pub use chrono::{DateTime, Utc};
     pub use domain_macro::*;
     pub use serde::{Deserialize, Serialize};
