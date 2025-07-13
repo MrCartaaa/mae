@@ -5,7 +5,7 @@ use syn::Data::Struct;
 use syn::Fields::Named;
 use syn::FieldsNamed;
 use syn::parse_macro_input;
-use syn::{Data, DataStruct, DeriveInput, Field, Fields};
+use syn::{Data, DataStruct, DeriveInput, Field, Fields, LitStr};
 
 // SQL Method
 enum Method {
@@ -53,7 +53,7 @@ fn get_sql_parts(
             }
             if has_attribute(field, "from_context") {
                 return (
-                    quote! {ctx.session.user.id},
+                    quote! {ctx.session.user_id},
                     format!("${}", i),
                     field_name.clone(),
                     field_name.clone(),
@@ -131,11 +131,11 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
     quote! {
 
             impl #struct_name {
-                pub async fn insert(ctx: &RequestContext, data: #create_fn_data_type) -> Result<#struct_name, anyhow::Error> {
+                pub async fn insert(ctx: &RequestContext<CustomContext>, data: #create_fn_data_type) -> Result<#struct_name, anyhow::Error> {
 
                     let sql = format!(
                     "INSERT INTO {} ({}) VALUES ({}) RETURNING {};",
-                    #struct_name_str,
+                    #struct_name::get_repo_name(),
                     #field_names_string,
                     #sql_reprs_str,
                     #returning_string);
@@ -161,8 +161,10 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
 
 // procedural macro to populate require structs for working with a PgRepo
 #[proc_macro_attribute]
-pub fn repo(_: TokenStream, input: TokenStream) -> TokenStream {
+pub fn repo(args: TokenStream, input: TokenStream) -> TokenStream {
+    let table_name = parse_macro_input!(args as LitStr);
     let ast = parse_macro_input!(input as DeriveInput);
+    let table_name = table_name.value();
 
     let repo_ident = &ast.ident;
 
@@ -201,6 +203,12 @@ pub fn repo(_: TokenStream, input: TokenStream) -> TokenStream {
             #[from_context] pub updated_by: i32,
             #[gen_date] pub created_at: DateTime<Utc>,
             #[gen_date] pub updated_at: DateTime<Utc>,
+        }
+
+        impl #repo_ident {
+            fn get_repo_name() -> String {
+               String::from(#table_name)
+            }
         }
     };
 

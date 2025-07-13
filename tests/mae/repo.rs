@@ -1,7 +1,10 @@
 use crate::build::get_context;
 use mae::repo::prelude::*;
 
-#[repo]
+#[derive(Clone)]
+struct CustomContext;
+
+#[repo("repoexample")]
 pub struct RepoExample {
     pub value: i32,
     pub string_value: String,
@@ -16,8 +19,8 @@ fn should_make_domain_struct() {
         id: 1,
         sys_client: 1,
         status: DomainStatus::Active,
-        tags: sqlx::types::JsonValue::Array(vec![]),
-        sys_detail: sqlx::types::JsonValue::Object(Map::new()),
+        tags: SqlxJson::Array(vec![]),
+        sys_detail: SqlxJson::Object(Map::new()),
         created_by: 1,
         updated_by: 1,
         updated_at: Utc::now(),
@@ -28,7 +31,9 @@ fn should_make_domain_struct() {
 
 #[tokio::test]
 async fn should_create_record() {
-    let ctx = get_context().await.unwrap();
+    let ctx = get_context::<CustomContext>(CustomContext {})
+        .await
+        .unwrap();
 
     let data = InsertRepoExample {
         sys_client: 1,
@@ -36,8 +41,8 @@ async fn should_create_record() {
         value: 1,
         string_value: String::from("hello_world"),
         comment: None,
-        tags: sqlx::types::JsonValue::Array(vec![]),
-        sys_detail: sqlx::types::JsonValue::Object(Map::new()),
+        tags: SqlxJson::Array(vec![]),
+        sys_detail: SqlxJson::Object(Map::new()),
     };
     let rec = RepoExample::insert(&ctx, data).await;
     assert!(rec.is_ok());
