@@ -120,7 +120,6 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
 
     // get the struct details
     let struct_name = &ast.ident;
-    let struct_name_str = &ast.ident.to_string().to_lowercase();
 
     // create the SQL Method params
 
