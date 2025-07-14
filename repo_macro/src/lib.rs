@@ -10,8 +10,9 @@ use syn::{Data, DataStruct, DeriveInput, Field, Fields, LitStr};
 // SQL Method
 enum Method {
     Insert,
-    Select,
-    Update,
+    // TODO: implement the following methods
+    // Select,
+    // Update,
 }
 
 // check if a field has a specific attribute
@@ -65,9 +66,8 @@ fn get_sql_parts(
                 field_name.clone(),
                 field_name.clone(),
             );
-        }
-        Method::Update => todo!(),
-        Method::Select => todo!(),
+        } // _ => {} // Method::Update => todo!(),
+          // Method::Select => todo!(),
     }
 }
 

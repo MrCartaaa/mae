@@ -5,21 +5,23 @@ use sqlx::PgPool;
 use std::net::TcpListener;
 
 pub trait Run: App {
-    async fn run_until_stopped(self) -> Result<(), std::io::Error>
+    fn run_until_stopped(
+        self,
+    ) -> impl std::future::Future<Output = Result<(), std::io::Error>> + Send
     where
-        Self: Sized,
+        Self: Sized + Send,
     {
-        self.server().await
+        async { self.server().await }
     }
 
-    async fn run<C: Clone + Send + 'static>(
+    fn run<Context: Clone + Send + 'static>(
         listener: TcpListener,
         db_pool: PgPool,
         base_url: String,
         hmac_secret: SecretString,
         redis_uri: SecretString,
-        custom_context: C,
-    ) -> Result<Server, anyhow::Error>;
+        custom_context: Context,
+    ) -> impl std::future::Future<Output = Result<Server, anyhow::Error>> + Send;
 }
 
 pub trait App {
@@ -31,32 +33,36 @@ pub trait App {
     where
         Self: Sized;
 
-    async fn build<T, C>(config: Settings<T>) -> Result<Self, anyhow::Error>
+    fn build<T, C>(
+        config: Settings<T>,
+    ) -> impl std::future::Future<Output = Result<Self, anyhow::Error>> + Send
     where
         Self: Sized + Run,
-        T: DeriveContext<C>,
+        T: DeriveContext<C> + Send,
         C: Clone + Send + 'static,
     {
-        let connection_pool = config.database.get_connection_pool();
+        async move {
+            let connection_pool = config.database.get_connection_pool();
 
-        let address = format!("{}:{}", config.application.host, config.application.port);
+            let address = format!("{}:{}", config.application.host, config.application.port);
 
-        let listener = TcpListener::bind(address)?;
-        let port = listener.local_addr().unwrap().port();
+            let listener = TcpListener::bind(address)?;
+            let port = listener.local_addr().unwrap().port();
 
-        let context = config.custom.context();
+            let context = config.custom.context();
 
-        let server = Self::run(
-            listener,
-            connection_pool,
-            config.application.base_url,
-            config.application.hmac_secret,
-            config.redis_uri,
-            context,
-        )
-        .await?;
+            let server = Self::run(
+                listener,
+                connection_pool,
+                config.application.base_url,
+                config.application.hmac_secret,
+                config.redis_uri,
+                context,
+            )
+            .await?;
 
-        Ok(Self::new(port, server))
+            Ok(Self::new(port, server))
+        }
     }
 }
 

@@ -4,9 +4,9 @@ use crate::telemetry::{get_subscriber, init_subscriber};
 use serde::Deserialize;
 
 pub async fn run<
-    Settings: for<'a> Deserialize<'a> + DeriveContext<Context> + Clone,
+    Settings: for<'a> Deserialize<'a> + DeriveContext<Context> + Clone + Send,
     Context: Clone + Send + 'static,
-    Application: App + Run,
+    Application: App + Run + Send + 'static,
 >(
     service_name: &str,
     log_level: &str,
@@ -16,9 +16,10 @@ pub async fn run<
 
     let config = get_configuration::<Settings>().expect("Failed to read config file");
 
-    let application = Application::build::<Settings, Context>(config.clone()).await?;
-
-    application.run_until_stopped().await?;
+    let _application = Application::build::<Settings, Context>(config.clone())
+        .await?
+        .run_until_stopped()
+        .await;
 
     Ok(())
 }
