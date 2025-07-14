@@ -1,5 +1,4 @@
 pub mod prelude {
-    pub use crate::request_context::RequestContext;
     pub use anyhow::{Context, anyhow};
     pub use chrono::{DateTime, Utc};
     pub use domain_macro::*;

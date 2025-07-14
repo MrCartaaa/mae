@@ -1,8 +1,11 @@
 use crate::build::get_context;
 use mae::repo::prelude::*;
+use mae::request_context as mae_context;
 
 #[derive(Clone)]
 struct CustomContext;
+
+type RequestContext = mae_context::RequestContext<CustomContext>;
 
 #[repo("repoexample")]
 pub struct RepoExample {
