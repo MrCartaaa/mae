@@ -1,7 +1,7 @@
 pub mod prelude {
     pub use anyhow::{Context, anyhow};
     pub use chrono::{DateTime, Utc};
-    pub use domain_macro::*;
+    pub use mae_repo_macro::*;
     pub use num::ToPrimitive;
     pub use serde::{Deserialize, Serialize};
     pub use serde_json::{Map, Value};

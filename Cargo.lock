@@ -950,17 +950,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "domain_macro"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "proc-macro2",
- "quote",
- "serde_json",
- "syn",
-]
-
-[[package]]
 name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1746,7 +1735,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "config",
- "domain_macro",
+ "mae-repo_macro",
+ "mae-run_app_macro",
  "num",
  "secrecy",
  "serde",
@@ -1760,6 +1750,28 @@ dependencies = [
  "tracing-bunyan-formatter",
  "tracing-log 0.2.0",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "mae-repo_macro"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
+name = "mae-run_app_macro"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn",
 ]
 
 [[package]]
