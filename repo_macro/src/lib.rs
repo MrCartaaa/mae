@@ -80,7 +80,7 @@ fn get_sql_parts(
 pub fn derive_repo(item: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(item as DeriveInput);
 
-    // Making sure it the derive macro is called on a sctruct;
+    // Making sure it the derive macro is called on a struct;
     let fields = match &ast.data {
         Data::Struct(DataStruct {
             fields: Fields::Named(fields),
@@ -124,8 +124,8 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
     // create the SQL Method params
 
     let create_fn_data_type = format_ident!("Insert{}", ast.ident);
-    let update_fn_data_type = format_ident!("Update{}", ast.ident);
-    let select_fn_data_type = format_ident!("Select{}", ast.ident);
+    let fields_type = format_ident!("{}Fields", ast.ident);
+    let update_fields_type = format_ident!("{}UpdateFields", ast.ident);
 
     quote! {
 
@@ -146,12 +146,13 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
                     Ok(result)
                 }
 
-                fn update(data: #update_fn_data_type) -> Result<#struct_name, anyhow::Error> {
-                todo!()
+                fn update(update_fields: Vec<#update_fields_type>, sys_client: u64) -> Result<UpdateRepo<#update_fields_type, #fields_type>, anyhow::Error> {
+                // UpdateRepo::<#update_fields_type, #fields_type>::update_builder(update_fields, sys_client)
+                    unimplemented!("functionality is currently unimplemented. Please update the Mae-Repo-Macro library");
                 }
 
-                fn select(data: #select_fn_data_type) -> Result<#struct_name, anyhow::Error> {
-                todo!()
+                fn select_builder(sys_client: u64) -> Result<SelectRepo<#fields_type>, anyhow::Error> {
+                SelectRepo::<#fields_type>::select_builder(sys_client) 
                 }
             }
         }
@@ -187,7 +188,7 @@ pub fn repo(args: TokenStream, input: TokenStream) -> TokenStream {
     // NOTE: here, we are deriving the Repo with the proc_macro_derive fn from above
     let repo = quote! {
 
-        #[derive(Repo, sqlx::FromRow, Serialize, Deserialize)]
+        #[derive(Repo, sqlx::FromRow, Serialize, Deserialize, Clone, Debug)]
         pub struct #repo_ident {
             #[id] pub id: i32,
             pub sys_client: i32,
@@ -219,7 +220,7 @@ pub fn repo(args: TokenStream, input: TokenStream) -> TokenStream {
         quote! {#name: #ty}
     });
 
-    // REPO SELECT DATA
+    // REPO INSERT DATA
     let create_repo_ident = format_ident!("Insert{}", &ast.ident);
     let create_repo = quote! {
         pub struct #create_repo_ident {
@@ -231,35 +232,50 @@ pub fn repo(args: TokenStream, input: TokenStream) -> TokenStream {
             pub sys_detail: Value,
         }
     };
-    let opt_params = fields.iter().map(|f| {
+
+    // Defining Column Names
+    let table_columns = fields.iter().map(|f| {
         let name = &f.ident;
-        let ty = &f.ty;
-        quote! {#name: Option<#ty>}
+        quote! { #name }
     });
-    // REPO UPDATE DATA
-    let update_repo_ident = format_ident!("Update{}", &ast.ident);
-    let update_repo = quote! {
-        pub struct #update_repo_ident {
-            #(pub #opt_params,)*
-            pub status: DomainStatus,
-            pub comment: Option<String>,
-            pub tags: Option<Vec<String>>,
-            pub sys_detail: Option<Map<String, Value>>,
+
+    let columns_ident = format_ident!("{}Fields", &ast.ident);
+    let columns_enum = quote! {
+        #[derive(Debug, Clone)]
+        #[allow(non_camel_case_types)]
+        pub enum #columns_ident {
+            All,
+            #(#table_columns,)*
+            sys_client,
+            status,
+            comment,
+            tags,
+            sys_detail,
+            id,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at,
         }
+
     };
-    let opt_params = fields.iter().map(|f| {
+    // Defining Column Names for Update
+    let table_update_columns = fields.iter().map(|f| {
         let name = &f.ident;
         let ty = &f.ty;
-        quote! {#name: Option<#ty>}
+        quote! { #name(#ty) }
     });
-    // REPO SELECT DATA
-    let select_repo_ident = format_ident!("Select{}", &ast.ident);
-    let select_repo = quote! {
-        pub struct #select_repo_ident {
-            #(pub #opt_params,)*
-            pub comment: Option<String>,
-            pub tags: Option<Vec<String>>,
-            pub sys_detail: Option<Map<String, Value>>,
+
+    let update_columns_ident = format_ident!("{}UpdateFields", &ast.ident);
+    let update_columns_enum = quote! {
+        #[derive(Debug, Clone)]
+        #[allow(non_camel_case_types)]
+        pub enum #update_columns_ident {
+            #(#table_update_columns,)*
+            status(DomainStatus),
+            comment(String),
+            tags(Value),
+            sys_detail(Value),
         }
     };
 
@@ -269,8 +285,60 @@ pub fn repo(args: TokenStream, input: TokenStream) -> TokenStream {
         #repo
 
         #create_repo
-        #select_repo
-        #update_repo
+
+        #update_columns_enum
+
+        #columns_enum
+
+        impl fmt::Display for #columns_ident {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "{}", format!("{:?}", self).to_lowercase())
+            }
+        }
+
+        impl SelectBuilder<#columns_ident, #repo_ident, RequestContext> for SelectRepo<#columns_ident> {
+            fn get_sys_client_field() -> #columns_ident {
+                #columns_ident::sys_client
+            }
+
+            fn get_repo_name() -> String {
+                #repo_ident::get_repo_name()
+            }
+        }
+
+        impl WhereBuilder<#columns_ident> for SelectRepo<#columns_ident> {
+            fn get_where_block(&self) -> WhereBlock<#columns_ident> {
+                self.where_block.clone()
+            }
+            fn copy_with(&self, where_block: WhereBlock<#columns_ident>) -> SelectRepo<#columns_ident> {
+                SelectRepo {
+                    where_block: where_block,
+                    build_string: Some(self.get_where_string())
+                }
+            }
+        }
+
+        impl UpdateBuilder<#update_columns_ident, #columns_ident, #repo_ident> for UpdateRepo<#update_columns_ident, #columns_ident> {
+            fn execute(&self) -> String {// Result<Vec<#repo_ident>, anyhow::Error> {
+                todo!();
+            }
+            fn get_sys_client_field() -> #columns_ident {
+                #columns_ident::sys_client
+            }
+        }
+
+        impl WhereBuilder<#columns_ident> for UpdateRepo<#update_columns_ident, #columns_ident> {
+            fn get_where_block(&self) -> WhereBlock<#columns_ident> {
+                self.where_block.clone()
+            }
+            fn copy_with(&self, where_block: WhereBlock<#columns_ident>) -> UpdateRepo<#update_columns_ident, #columns_ident> {
+                UpdateRepo {
+                    update_block: self.update_block.clone().to_owned(),
+                    where_block: where_block
+                }
+            }
+        }
     }
     .into()
 }
+

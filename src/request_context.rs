@@ -21,3 +21,14 @@ impl<T: Clone> RequestContext<T> {
         }
     }
 }
+
+pub trait ContextAccessor {
+    fn get_db_pool(&self) -> &PgPool;
+    // TODO: implement the other property accessor functions (ie Session, CustomContext)
+}
+
+impl<T: Clone> ContextAccessor for RequestContext<T> {
+    fn get_db_pool(&self) -> &PgPool {
+        &self.db_pool
+    }
+}

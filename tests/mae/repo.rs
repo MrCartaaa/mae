@@ -52,3 +52,42 @@ async fn should_create_record() {
 
     assert_eq!(rec.unwrap().string_value, "hello_world");
 }
+
+#[tokio::test]
+async fn should_get_empty_records() {
+    let ctx = get_context::<CustomContext>(CustomContext {})
+        .await
+        .unwrap();
+
+    let builder = RepoExample::select_builder(1)
+        .unwrap()
+        .and_where(
+            RepoExampleFields::string_value,
+            Where::StringIs("".to_string()),
+        )
+        .and_where(RepoExampleFields::value, Where::Equals(1));
+
+    let res = execute!(ctx, builder);
+    assert!(res.is_ok());
+
+    assert!(res.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn should_get_records() {
+    let ctx = get_context::<CustomContext>(CustomContext {})
+        .await
+        .unwrap();
+
+    let builder = RepoExample::select_builder(1)
+        .unwrap()
+        .and_where(
+            RepoExampleFields::string_value,
+            Where::Ilike("%ELLO_WORL%".to_string()),
+        )
+        .and_where(RepoExampleFields::value, Where::Equals(1));
+
+    let res = execute!(ctx, builder);
+    assert!(res.is_ok());
+    assert_eq!(res.unwrap().is_empty(), false);
+}
