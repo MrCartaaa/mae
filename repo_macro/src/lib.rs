@@ -130,7 +130,7 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
     quote! {
 
             impl #struct_name {
-                pub async fn insert(ctx: &RequestContext, data: #create_fn_data_type) -> Result<#struct_name, anyhow::Error> {
+                pub async fn insert(ctx: &RequestContext, data: #create_fn_data_type) -> Result<#struct_name, sqlx::Error> {
 
                     let sql = format!(
                     "INSERT INTO {} ({}) VALUES ({}) RETURNING {};",
@@ -151,7 +151,7 @@ pub fn derive_repo(item: TokenStream) -> TokenStream {
                     unimplemented!("functionality is currently unimplemented. Please update the Mae-Repo-Macro library");
                 }
 
-                fn select_builder(sys_client: u64) -> Result<SelectRepo<#fields_type>, anyhow::Error> {
+                pub fn select_builder(sys_client: u64) -> Result<SelectRepo<#fields_type>, anyhow::Error> {
                 SelectRepo::<#fields_type>::select_builder(sys_client) 
                 }
             }
