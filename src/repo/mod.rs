@@ -30,14 +30,6 @@ pub mod prelude {
         }
     }
 
-    #[derive(thiserror::Error, Debug)]
-    pub enum RepoError {
-        #[error(transparent)]
-        UnexpectedError(#[from] anyhow::Error),
-        #[error("Key {0} already exists.")]
-        DuplicateKeyError(String),
-    }
-
     #[macro_export]
     macro_rules! execute {
         ($ctx:ident, $builder:ident) => {
