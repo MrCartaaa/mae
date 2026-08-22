@@ -17,7 +17,11 @@ allow = [
 
 [advisories]
 unmaintained = "workspace"
-ignore = []
+ignore = [
+  # h2 0.3.27 via actix-http 3.13; no 0.3 patch (advisory patched only in 0.4.16).
+  # 0.4.x in this lockfile is already 0.4.16.
+  "RUSTSEC-2026-0258",
+]
 
 [bans]
 multiple-versions="allow"
