@@ -21,6 +21,10 @@ ignore = [
   # h2 0.3.27 via actix-http 3.13; no 0.3 patch (advisory patched only in 0.4.16).
   # 0.4.x in this lockfile is already 0.4.16.
   "RUSTSEC-2026-0258",
+  # astral-tokio-tar: PAX extraction validation — transitive via testcontainers
+  "RUSTSEC-2026-0066",
+  # rustls-webpki: CRL matching logic — transitive dep, no fix available yet
+  "RUSTSEC-2026-0049",
 ]
 
 [bans]
