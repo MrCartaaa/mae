@@ -1,3 +1,8 @@
+#! test.yaml
+application:
+  port: "0"
+  hmac_secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
 database:
   # mae::DatabaseSettings expects `database_name`, not `db_name`.
   database_name: "service_test_db"
